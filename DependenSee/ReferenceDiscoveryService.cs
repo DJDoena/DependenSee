@@ -13,6 +13,8 @@ public class ReferenceDiscoveryService
     public bool FollowReparsePoints { get; set; }
     public string ExcludeFolders { get; set; }
 
+    public string SolutionFile { get; set; }
+
     private string[] _includeProjectNamespaces { get; set; }
     private string[] _excludeProjectNamespaces { get; set; }
     private string[] _includePackageNamespaces { get; set; }
@@ -41,7 +43,17 @@ public class ReferenceDiscoveryService
             || !string.IsNullOrWhiteSpace(IncludePackageNamespaces)
             || !string.IsNullOrWhiteSpace(ExcludePackageNamespaces);
 
-        Discover(SourceFolder, result);
+        if (string.IsNullOrEmpty(SolutionFile))
+        {
+            Discover(SourceFolder, result);
+        }
+        else
+        {
+            var projectFiles = SolutionDiscoverer.GetProjects(Path.Combine(SourceFolder, SolutionFile));
+
+            DiscoverProjects(projectFiles, result);
+        }        
+
         return result;
     }
 
@@ -76,6 +88,18 @@ public class ReferenceDiscoveryService
 
         var projectFiles = Directory.EnumerateFiles(folder, "*.csproj")
             .Concat(Directory.EnumerateFiles(folder, "*.vbproj"));
+        
+        DiscoverProjects(projectFiles, result);
+        
+        var directories = Directory.EnumerateDirectories(folder);
+        foreach (var directory in directories)
+        {
+            Discover(directory, result);
+        }
+    }
+
+    private void DiscoverProjects(IEnumerable<string> projectFiles, DiscoveryResult result)
+    {
         foreach (var file in projectFiles)
         {
             var id = file.Replace(SourceFolder, "");
@@ -128,11 +152,6 @@ public class ReferenceDiscoveryService
                     To = package.Id
                 });
             }
-        }
-        var directories = Directory.EnumerateDirectories(folder);
-        foreach (var directory in directories)
-        {
-            Discover(directory, result);
         }
     }
 

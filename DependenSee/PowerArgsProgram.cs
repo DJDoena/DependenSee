@@ -78,6 +78,11 @@ public class PowerArgsProgram
     [ArgShortcut("FReP")]
     public bool FollowReparsePoints { get; set; }
 
+    [ArgDefaultValue("")]
+    [ArgDescription("Set if you want the scan a solution file as a starting point in the source folder.")]
+    [ArgShortcut("sln")]
+    [SolutionFileHook]
+    public string SolutionFile { get; set; }
 
     public void Main()
     {
@@ -98,8 +103,29 @@ public class PowerArgsProgram
 
             SourceFolder = SourceFolder,
 
+            SolutionFile= SolutionFile,
+
         };
         var result = service.Discover();
         new ResultWriter().Write(result, OutputType, OutputPath, HtmlTitle);
+    }
+}
+
+
+internal sealed class SolutionFileHook : ArgHook
+{
+    public override void BeforeInvoke(HookContext context)
+    {
+        var args = (PowerArgsProgram)context.Args;
+
+        if (!string.IsNullOrEmpty(args.SolutionFile))
+        {
+            var solutionFullName = Path.Combine(args.SourceFolder, args.SolutionFile);
+
+            if (!File.Exists(solutionFullName))
+            {
+                throw new ValidationArgException($"File not found - {solutionFullName}", new FileNotFoundException());
+            }
+        }
     }
 }
